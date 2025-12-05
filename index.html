@@ -1,482 +1,681 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dienstplan</title>
-<style>
-html, body {
-  margin: 0;
-  padding: 0;
-  background: #121212;
-  color: #eee;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji","Segoe UI Emoji";
-}
-:root{
-  --panel:#1e1e1e;
-  --header:#2b2b2b;
-  --border:#3a3a3a;
-  --text:#eee;
-  --accent:#4caf50;
-  --accent2:#2196f3;
-  --danger:#e53935;
-}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dienstplan</title>
+    <!-- Firebase compat SDK (für Browser ohne Build-Tools) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
-/* Layout: Content links, fixierte Sidebar rechts */
-main{
-  display:flex;
-  gap:16px;
-  padding:24px;
-}
-#container{ flex:1; }
-h1{ text-align:center; margin-bottom:16px; }
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyABTwee2tJL7iHm0NtWQwck16wPDQzhfUs",
+            authDomain: "website-c1c2f.firebaseapp.com",
+            databaseURL: "https://website-c1c2f-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "website-c1c2f",
+            storageBucket: "website-c1c2f.firebasestorage.app",
+            messagingSenderId: "232311529330",
+            appId: "1:232311529330:web:66f57daaca073226f787eb",
+            measurementId: "G-ESSP75GFD7"
+        };
 
-.weekend{
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:16px;
-  margin-bottom:16px;
-}
-.weekend-header{
-  font-weight:bold;
-  margin-bottom:12px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.day-wrap{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-}
-.day-card{
-  border:1px solid var(--border);
-  border-radius:8px;
-  overflow:hidden;
-}
-.day-title{
-  background:var(--header);
-  padding:8px 12px;
-  font-weight:bold;
-}
-table{ width:100%; border-collapse:collapse; }
-th, td{ border-top:1px solid var(--border); padding:8px; text-align:left; }
-th{ background:#2b2b2b; }
-select{
-  width:100%;
-  background:#1b1b1b;
-  color:var(--text);
-  border:1px solid var(--border);
-  border-radius:4px;
-  padding:6px 8px;
-}
-.controls{
-  display:flex; gap:8px;
-  padding:8px 12px 12px;
-  border-top:1px solid var(--border);
-}
-button{
-  border:none; border-radius:6px;
-  padding:8px 12px; color:white; cursor:pointer;
-}
-.btn-save{ background:var(--accent); }
-.btn-load{ background:var(--accent2); }
-.btn-reset{ background:var(--danger); }
-.btn-dark{ background:#444; border:1px solid #666; }
-.btn-dark:hover{ background:#555; }
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+    </script>
+    <style>
+                html, body {
+                        margin: 0;
+                        padding: 0;
+                        background: #121212;
+                        color: #eee;
+                        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji","Segoe UI Emoji";
 
-/* ---- Sidebar: fixiert rechts (sticky) mit eigenem Scroll ---- */
-aside{
-  width:380px;
-  background:var(--panel);
-  border-left:1px solid var(--border);
-  padding:16px;
-  display:flex;
-  flex-direction:column;
-  gap:20px;
+        }
 
-  position: sticky;
-  top: 24px;                     /* gleiche Höhe wie main-Padding */
-  height: calc(100vh - 48px);    /* 24px oben + 24px unten */
-  overflow: auto;                /* interne Scrollleiste, Layout & Farben unverändert */
-}
+                 :root {
+                        --panel: #1e1e1e;
+                        --header: #2b2b2b;
+                        --border: #3a3a3a;
+                        --text: #eee;
+                        --accent: #4caf50;
+                        --accent2: #2196f3;
+                        --danger: #e53935;
 
-aside h2{
-  text-align:center;
-  margin:0 0 10px;
-  border-bottom:1px solid var(--border);
-  padding-bottom:6px;
-}
-.counter-section{
-  background:#252525;
-  border-radius:8px;
-  padding:10px;
-}
-.counter-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:8px;
-}
-.counter-table th, .counter-table td{
-  border:1px solid var(--border);
-  padding:6px;
-  text-align:left;
-}
-.counter-table th{ background:var(--header); }
-#summaryRS td:nth-child(2), #summaryVert td:nth-child(2){ background:rgba(76,175,80,0.2); }
-#summaryRS td:nth-child(3), #summaryVert td:nth-child(3){ background:rgba(33,150,243,0.2); }
+        }
 
-/* Namensverwaltung */
-.name-manager input{
-  width:70%; padding:6px; margin-right:8px;
-  background:#1b1b1b; color:var(--text);
-  border:1px solid var(--border); border-radius:4px;
-}
-.name-manager button{ background:var(--accent); }
-.name-list{ margin-top:10px; }
-.name-item{
-  display:flex; justify-content:space-between; padding:4px 0;
-}
-.name-item button{
-  background:var(--danger);
-  padding:4px 8px; font-size:12px;
-}
-</style>
+
+        /* Layout: Content links, fixierte Sidebar rechts */
+                main {
+                        display: flex;
+                        gap: 16px;
+                        padding: 24px;
+
+        }
+
+                 #container {
+                        flex: 1;
+
+        }
+
+                h1 {
+                        text-align: center;
+                        margin-bottom: 16px;
+
+        }
+
+                 .weekend {
+                        background: var(--panel);
+                        border: 1px solid var(--border);
+                        border-radius: 10px;
+                        padding: 16px;
+                        margin-bottom: 16px;
+
+        }
+
+                 .weekend-header {
+                        font-weight: bold;
+                        margin-bottom: 12px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+
+        }
+
+                 .day-wrap {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 16px;
+
+        }
+
+                 .day-card {
+                        border: 1px solid var(--border);
+                        border-radius: 8px;
+                        overflow: hidden;
+
+        }
+
+                 .day-title {
+                        background: var(--header);
+                        padding: 8px 12px;
+                        font-weight: bold;
+
+        }
+
+                table {
+                        width: 100%;
+                        border-collapse: collapse;
+
+        }
+
+                th, td {
+                        border-top: 1px solid var(--border);
+                        padding: 8px;
+                        text-align: left;
+
+        }
+
+                th {
+                        background: #2b2b2b;
+
+        }
+
+                select {
+                        width: 100%;
+                        background: #1b1b1b;
+                        color: var(--text);
+                        border: 1px solid var(--border);
+                        border-radius: 4px;
+                        padding: 6px 8px;
+
+        }
+
+                 .controls {
+                        display: flex;
+                        gap: 8px;
+                        padding: 8px 12px 12px;
+                        border-top: 1px solid var(--border);
+
+        }
+
+                button {
+                        border: none;
+                        border-radius: 6px;
+                        padding: 8px 12px;
+                        color: white;
+                        cursor: pointer;
+
+        }
+
+                 .btn-save {
+                        background: var(--accent);
+
+        }
+
+                 .btn-load {
+                        background: var(--accent2);
+
+        }
+
+                 .btn-reset {
+                        background: var(--danger);
+
+        }
+
+                 .btn-dark {
+                        background: #444;
+                        border: 1px solid #666;
+
+        }
+
+                     .btn-dark:hover {
+                            background: #555;
+
+        }
+
+
+        /* ---- Sidebar: fixiert rechts (sticky) mit eigenem Scroll ---- */
+                aside {
+                        width: 380px;
+                        background: var(--panel);
+                        border-left: 1px solid var(--border);
+                        padding: 16px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 20px;
+                        position: sticky;
+                        top: 24px; /* gleiche Höhe wie main-Padding */
+                        height: calc(100vh - 48px); /* 24px oben + 24px unten */
+                        overflow: auto; /* interne Scrollleiste, Layout & Farben unverändert */
+
+        }
+
+                    aside h2 {
+                            text-align: center;
+                            margin: 0 0 10px;
+                            border-bottom: 1px solid var(--border);
+                            padding-bottom: 6px;
+
+        }
+
+                 .counter-section {
+                        background: #252525;
+                        border-radius: 8px;
+                        padding: 10px;
+
+        }
+
+                 .counter-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 8px;
+
+        }
+
+                     .counter-table th, .counter-table td {
+                            border: 1px solid var(--border);
+                            padding: 6px;
+                            text-align: left;
+
+        }
+
+                     .counter-table th {
+                            background: var(--header);
+
+        }
+
+                 #summaryRS td:nth-child(2), #summaryVert td:nth-child(2) {
+                        background: rgba(76,175,80,0.2);
+
+        }
+
+                 #summaryRS td:nth-child(3), #summaryVert td:nth-child(3) {
+                        background: rgba(33,150,243,0.2);
+
+        }
+
+
+        /* Namensverwaltung */
+                 .name-manager input {
+                        width: 70%;
+                        padding: 6px;
+                        margin-right: 8px;
+                        background: #1b1b1b;
+                        color: var(--text);
+                        border: 1px solid var(--border);
+                        border-radius: 4px;
+
+        }
+
+                 .name-manager button {
+                        background: var(--accent);
+
+        }
+
+                 .name-list {
+                        margin-top: 10px;
+
+        }
+
+                 .name-item {
+                        display: flex;
+                        justify-content: space-between;
+                        padding: 4px 0;
+
+        }
+
+                     .name-item button {
+                            background: var(--danger);
+                            padding: 4px 8px;
+                            font-size: 12px;
+
+        }
+
+
+    </style>
 </head>
 <body>
-<main>
-  <div style="flex:1;">
-    <h1>Dienstplan</h1>
+    <main>
+        <div style="flex:1;">
+            <h1>Dienstplan</h1>
 
-    <div style="margin-bottom:20px;">
-      <input type="date" id="satDate">
-      <input type="date" id="sunDate">
-      <button id="addWeekendBtn" class="btn-dark" onclick="addWeekend()">Neues Wochenende hinzufügen</button>
-    </div>
+            <div style="margin-bottom:20px;">
+                <input type="date" id="satDate">
+                <input type="date" id="sunDate">
+                <button id="addWeekendBtn" class="btn-dark" onclick="addWeekend()">Neues Wochenende hinzufügen</button>
+            </div>
 
-    <!-- Kein statischer "Invalid Date"-Block -->
-    <div id="container"></div>
-  </div>
+            <!-- Kein statischer "Invalid Date"-Block -->
+            <div id="container"></div>
+        </div>
 
-  <!-- Sidebar steht rechts im selben Flex-Container und ist sticky -->
-  <aside>
-    <div class="counter-section">
-      <h2>RS (Detail)</h2>
-      <table class="counter-table" id="rsCounter">
-        <thead><tr><th>Name</th><th>Anzahl</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
+        <!-- Sidebar steht rechts im selben Flex-Container und ist sticky -->
+        <aside>
+            <div class="counter-section">
+                <h2>RS (Detail)</h2>
+                <table class="counter-table" id="rsCounter">
+                    <thead><tr><th>Name</th><th>Anzahl</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
 
-    <div class="counter-section">
-      <h2>Vertretung (Detail)</h2>
-      <table class="counter-table" id="vertCounter">
-        <thead><tr><th>Name</th><th>Anzahl</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
+            <div class="counter-section">
+                <h2>Vertretung (Detail)</h2>
+                <table class="counter-table" id="vertCounter">
+                    <thead><tr><th>Name</th><th>Anzahl</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
 
-    <div class="counter-section">
-      <h2>RS – Gesamtübersicht</h2>
-      <table class="counter-table" id="summaryRS">
-        <thead><tr><th>Name</th><th>Früh</th><th>Spät</th><th>Summe</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
+            <div class="counter-section">
+                <h2>RS – Gesamtübersicht</h2>
+                <table class="counter-table" id="summaryRS">
+                    <thead><tr><th>Name</th><th>Früh</th><th>Spät</th><th>Summe</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
 
-    <div class="counter-section">
-      <h2>Vertretung – Gesamtübersicht</h2>
-      <table class="counter-table" id="summaryVert">
-        <thead><tr><th>Name</th><th>Früh</th><th>Spät</th><th>Summe</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
+            <div class="counter-section">
+                <h2>Vertretung – Gesamtübersicht</h2>
+                <table class="counter-table" id="summaryVert">
+                    <thead><tr><th>Name</th><th>Früh</th><th>Spät</th><th>Summe</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
 
-    <div class="counter-section">
-      <h2>Namen verwalten</h2>
-      <div class="name-manager">
-        <input type="text" id="newName" placeholder="Neuer Name">
-        <button onclick="addName()">Hinzufügen</button>
-      </div>
-      <div class="name-list" id="nameList"></div>
-    </div>
-  </aside>
-</main>
+            <div class="counter-section">
+                <h2>Namen verwalten</h2>
+                <div class="name-manager">
+                    <input type="text" id="newName" placeholder="Neuer Name">
+                    <button onclick="addName()">Hinzufügen</button>
+                </div>
+                <div class="name-list" id="nameList"></div>
+            </div>
+        </aside>
+    </main>
 
-<script>
-/** Verhalten unverändert + gewünschte Anpassungen:
- * - Keine manuellen Zähler.
- * - Rechte Tabellen zeigen immer alle Namen mit 0, wenn keine Zuteilungen existieren.
- * - Sidebar bleibt fix (durch CSS sticky).
- */
+    <script>
+        /** Verhalten unverändert + gewünschte Anpassungen:
+         * - Keine manuellen Zähler.
+         * - Rechte Tabellen zeigen immer alle Namen mit 0, wenn keine Zuteilungen existieren.
+         * - Sidebar bleibt fix (durch CSS sticky).
+         */
 
-const SHIFTS = ["Früh 1","Früh 2","Spät 1","Spät 2"];
+        const SHIFTS = ["Früh 1", "Früh 2", "Spät 1", "Spät 2"];
 
-// Standard-Namensliste (aus deiner Originaldatei)
-const DEFAULT_NAMES = [
-  "Leon Kuhlmann","Jeannette Zimmer","Lars Hoofdmann","Malte Klaas Rothe",
-  "Norbert Schulze","Martin Göden","Lars Hinrichs","Lukas Frederik Deters",
-  "Hauke Ramke","Dieter Hohlbaum","Torsten Hanto","Katja Neumann","Anne Stadlik"
-];
+        // Standard-Namensliste (aus deiner Originaldatei)
+        const DEFAULT_NAMES = [
+            "Leon Kuhlmann", "Jeannette Zimmer", "Lars Hoofdmann", "Malte Klaas Rothe",
+            "Norbert Schulze", "Martin Göden", "Lars Hinrichs", "Lukas Frederik Deters",
+            "Hauke Ramke", "Dieter Hohlbaum", "Torsten Hanto", "Katja Neumann", "Anne Stadlik"
+        ];
 
-let names = JSON.parse(localStorage.getItem("names") || "[]");
-let weekends = JSON.parse(localStorage.getItem("weekends") || "[]");
+        let names = JSON.parse(localStorage.getItem("names") || "[]");
+        let weekends = JSON.parse(localStorage.getItem("weekends") || "[]");
 
-// Defaults setzen, falls leer
-if (!Array.isArray(names) || names.length === 0) {
-  names = [...DEFAULT_NAMES];
-  localStorage.setItem("names", JSON.stringify(names));
-}
-
-function saveNames(){
-  localStorage.setItem("names", JSON.stringify(names));
-  renderNameList();
-  updateDropdowns();
-  updateCounters();
-}
-function saveWeekends(){ localStorage.setItem("weekends", JSON.stringify(weekends)); }
-
-function renderNameList(){
-  const list = document.getElementById("nameList");
-  list.innerHTML = "";
-  names.forEach((name, idx)=>{
-    const div = document.createElement("div");
-    div.className = "name-item";
-    div.innerHTML = `${name} <button onclick="deleteName(${idx})">X</button>`;
-    list.appendChild(div);
-  });
-}
-function addName(){
-  const input = document.getElementById("newName");
-  const val = input.value.trim();
-  if (val && !names.includes(val)){
-    names.push(val);
-    input.value = "";
-    saveNames();
-  }
-}
-function deleteName(idx){
-  names.splice(idx,1);
-  saveNames();
-}
-function updateDropdowns(){
-  document.querySelectorAll("select").forEach(sel=>{
-    sel.innerHTML = `<option value="">-- wählen --</option>` + names.map(n=>`<option>${n}</option>`).join("");
-  });
-}
-
-function buildDayTable(dateObj){
-  const dateStr = dateObj.toLocaleDateString("de-DE");
-  const card = document.createElement("div");
-  card.className="day-card";
-
-  const title = document.createElement("div");
-  title.className="day-title";
-  title.textContent = dateStr;
-  card.appendChild(title);
-
-  const table = document.createElement("table");
-  table.innerHTML = `<thead><tr><th>Schicht</th><th>RS</th><th>Vertretung</th></tr></thead>`;
-  const tbody = document.createElement("tbody");
-  SHIFTS.forEach(shift=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${shift}</td>
-      <td><select data-role="RS"></select></td>
-      <td><select data-role="Vertretung"></select></td>
-    `;
-    tbody.appendChild(tr);
-  });
-  table.appendChild(tbody);
-  card.appendChild(table);
-
-  const controls = document.createElement("div");
-  controls.className="controls";
-
-  const btnSave = document.createElement("button");
-  btnSave.className="btn-save";
-  btnSave.textContent="Speichern";
-  btnSave.onclick = ()=>{
-    const data = SHIFTS.map((shift, idx)=>{
-      const row = tbody.rows[idx];
-      return {
-        shift,
-        rs: row.querySelector('select[data-role="RS"]').value,
-        vert: row.querySelector('select[data-role="Vertretung"]').value
-      };
-    });
-    localStorage.setItem(`dienstplan:${dateStr}`, JSON.stringify(data));
-    updateCounters();
-  };
-
-  const btnLoad = document.createElement("button");
-  btnLoad.className="btn-load";
-  btnLoad.textContent="Laden";
-  btnLoad.onclick = ()=>{
-    const raw = localStorage.getItem(`dienstplan:${dateStr}`);
-    if(!raw) return;
-    const data = JSON.parse(raw);
-    data.forEach((rowData, idx)=>{
-      const row = tbody.rows[idx];
-      row.querySelector('select[data-role="RS"]').value = rowData.rs ?? "";
-      row.querySelector('select[data-role="Vertretung"]').value = rowData.vert ?? "";
-    });
-    updateCounters();
-  };
-
-  const btnReset = document.createElement("button");
-  btnReset.className="btn-reset";
-  btnReset.textContent="Zurücksetzen";
-  btnReset.onclick = ()=>{
-    [...tbody.querySelectorAll('select')].forEach(s=>s.value="");
-    localStorage.removeItem(`dienstplan:${dateStr}`);
-    updateCounters();
-  };
-
-  // Auto-Save bei Änderung
-  tbody.querySelectorAll('select').forEach(sel=>{
-    sel.addEventListener('change', ()=>{
-      const data = SHIFTS.map((shift, idx)=>{
-        const row = tbody.rows[idx];
-        return {
-          shift,
-          rs: row.querySelector('select[data-role="RS"]').value,
-          vert: row.querySelector('select[data-role="Vertretung"]').value
-        };
-      });
-      localStorage.setItem(`dienstplan:${dateStr}`, JSON.stringify(data));
-      updateCounters();
-    });
-  });
-
-  controls.appendChild(btnSave);
-  controls.appendChild(btnLoad);
-  controls.appendChild(btnReset);
-  card.appendChild(controls);
-
-  return card;
-}
-
-function createWeekendBlock(sat, sun){
-  const wrapper = document.createElement("div");
-  wrapper.className="weekend";
-
-  const header = document.createElement("div");
-  header.className="weekend-header";
-  header.innerHTML = `Wochenende: ${sat.toLocaleDateString("de-DE")} – ${sun.toLocaleDateString("de-DE")}`;
-
-  const deleteBtn = document.createElement("button");
-  deleteBtn.textContent = "Löschen";
-  deleteBtn.className = "btn-dark";
-  deleteBtn.onclick = ()=>{
-    localStorage.removeItem(`dienstplan:${sat.toLocaleDateString("de-DE")}`);
-    localStorage.removeItem(`dienstplan:${sun.toLocaleDateString("de-DE")}`);
-    weekends = weekends.filter(w => !(w.sat === sat.toISOString() && w.sun === sun.toISOString()));
-    saveWeekends();
-    wrapper.remove();
-    updateCounters();
-  };
-
-  header.appendChild(deleteBtn);
-  wrapper.appendChild(header);
-
-  const dayWrap = document.createElement("div");
-  dayWrap.className="day-wrap";
-  dayWrap.appendChild(buildDayTable(sat));
-  dayWrap.appendChild(buildDayTable(sun));
-  wrapper.appendChild(dayWrap);
-
-  document.getElementById("container").appendChild(wrapper);
-  updateDropdowns();
-
-  // Bereits gespeicherte Daten automatisch laden
-  setTimeout(()=>{ document.querySelectorAll(".btn-load").forEach(btn=>btn.click()); }, 100);
-}
-
-function addWeekend(){
-  const satInput = document.getElementById("satDate").value;
-  const sunInput = document.getElementById("sunDate").value;
-  if(!satInput || !sunInput) return alert("Bitte beide Daten eingeben!");
-  const sat = new Date(satInput);
-  const sun = new Date(sunInput);
-  weekends.push({ sat: sat.toISOString(), sun: sun.toISOString() });
-  saveWeekends();
-  createWeekendBlock(sat, sun);
-}
-
-/** Zählerlogik: alle Namen werden immer angezeigt (mit 0, wenn keine Zuweisungen) */
-function updateCounters(){
-  const rsMap = {}, vertMap = {}, summaryRS = {}, summaryVert = {};
-
-  Object.keys(localStorage).forEach(key=>{
-    if(key.startsWith("dienstplan:")){
-      const data = JSON.parse(localStorage.getItem(key) || "[]");
-      data.forEach(row=>{
-        if(row.rs){
-          rsMap[row.rs] = (rsMap[row.rs] || 0) + 1;
-          if(!summaryRS[row.rs]) summaryRS[row.rs] = { früh:0, spät:0 };
-          if(row.shift.startsWith("Früh")) summaryRS[row.rs].früh++;
-          if(row.shift.startsWith("Spät")) summaryRS[row.rs].spät++;
+        // Defaults setzen, falls leer
+        if (!Array.isArray(names) || names.length === 0) {
+            names = [...DEFAULT_NAMES];
+            localStorage.setItem("names", JSON.stringify(names));
         }
-        if(row.vert){
-          vertMap[row.vert] = (vertMap[row.vert] || 0) + 1;
-          if(!summaryVert[row.vert]) summaryVert[row.vert] = { früh:0, spät:0 };
-          if(row.shift.startsWith("Früh")) summaryVert[row.vert].früh++;
-          if(row.shift.startsWith("Spät")) summaryVert[row.vert].spät++;
+
+        function saveNames() {
+            localStorage.setItem("names", JSON.stringify(names));
+
+            db.ref("names").set(names);
+
+            renderNameList();
+            updateDropdowns();
+            updateCounters();
         }
-      });
-    }
-  });
 
-  // fehlende Namen mit 0 auffüllen
-  names.forEach(n=>{
-    if(rsMap[n] === undefined) rsMap[n] = 0;
-    if(vertMap[n] === undefined) vertMap[n] = 0;
-    if(!summaryRS[n]) summaryRS[n] = { früh:0, spät:0 };
-    if(!summaryVert[n]) summaryVert[n] = { früh:0, spät:0 };
-  });
+        function saveWeekends() {
+            localStorage.setItem("weekends", JSON.stringify(weekends));
+            db.ref("weekends").set(weekends);
+        }
 
-  renderCounter("rsCounter", rsMap, names);
-  renderCounter("vertCounter", vertMap, names);
-  renderSummary("summaryRS", summaryRS, names);
-  renderSummary("summaryVert", summaryVert, names);
-}
 
-function renderCounter(tableId, map, orderedNames){
-  const tbody = document.querySelector(`#${tableId} tbody`);
-  tbody.innerHTML = "";
-  const entries = orderedNames.map(n=>[n, map[n] || 0])
-    .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],"de"));
-  entries.forEach(([name,count])=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${name}</td><td>${count}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+        function renderNameList() {
+            const list = document.getElementById("nameList");
+            list.innerHTML = "";
+            names.forEach((name, idx) => {
+                const div = document.createElement("div");
+                div.className = "name-item";
+                div.innerHTML = `${name} <button onclick="deleteName(${idx})">X</button>`;
+                list.appendChild(div);
+            });
+        }
+        function addName() {
+            const input = document.getElementById("newName");
+            const val = input.value.trim();
+            if (val && !names.includes(val)) {
+                names.push(val);
+                input.value = "";
+                saveNames();
+            }
+        }
+        function deleteName(idx) {
+            names.splice(idx, 1);
+            saveNames();
+        }
+        function updateDropdowns() {
+            document.querySelectorAll("select").forEach(sel => {
+                sel.innerHTML = `<option value="">-- wählen --</option>` + names.map(n => `<option>${n}</option>`).join("");
+            });
+        }
 
-function renderSummary(tableId, map, orderedNames){
-  const tbody = document.querySelector(`#${tableId} tbody`);
-  tbody.innerHTML = "";
-  const rows = orderedNames.map(n=>{
-    const obj = map[n] || {früh:0, spät:0};
-    const sum = (obj.früh||0) + (obj.spät||0);
-    return { name:n, früh:obj.früh||0, spät:obj.spät||0, sum };
-  }).sort((a,b)=> b.sum - a.sum || a.name.localeCompare(b.name,"de"));
+        function buildDayTable(dateObj) {
+            const dateStr = dateObj.toLocaleDateString("de-DE");
+            const card = document.createElement("div");
+            card.className = "day-card";
 
-  rows.forEach(({name,früh,spät,sum})=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${name}</td><td>${früh}</td><td>${spät}</td><td>${sum}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+            const title = document.createElement("div");
+            title.className = "day-title";
+            title.textContent = dateStr;
+            card.appendChild(title);
 
-// Initialisierung
-renderNameList();
-updateDropdowns();
-updateCounters();
-weekends.forEach(w=>{ createWeekendBlock(new Date(w.sat), new Date(w.sun)); });
-</script>
+            const table = document.createElement("table");
+            table.innerHTML = `<thead><tr><th>Schicht</th><th>RS</th><th>Vertretung</th></tr></thead>`;
+            const tbody = document.createElement("tbody");
+            SHIFTS.forEach(shift => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+              <td>${shift}</td>
+              <td><select data-role="RS"></select></td>
+              <td><select data-role="Vertretung"></select></td>
+            `;
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            card.appendChild(table);
+
+            const controls = document.createElement("div");
+            controls.className = "controls";
+
+            const btnSave = document.createElement("button");
+            btnSave.className = "btn-save";
+            btnSave.textContent = "Speichern";
+            btnSave.onclick = () => {
+                const data = SHIFTS.map((shift, idx) => {
+                    const row = tbody.rows[idx];
+                    return {
+                        shift,
+                        rs: row.querySelector('select[data-role="RS"]').value,
+                        vert: row.querySelector('select[data-role="Vertretung"]').value
+                    };
+                });
+
+                localStorage.setItem(`dienstplan:${dateStr}`, JSON.stringify(data));
+
+                db.ref("dienstplan/" + dateStr).set(data);
+
+                updateCounters();
+            };
+
+
+            const btnLoad = document.createElement("button");
+            btnLoad.className = "btn-load";
+            btnLoad.textContent = "Laden";
+            btnLoad.onclick = () => {
+                const raw = localStorage.getItem(`dienstplan:${dateStr}`);
+                if (!raw) return;
+                const data = JSON.parse(raw);
+                data.forEach((rowData, idx) => {
+                    const row = tbody.rows[idx];
+                    row.querySelector('select[data-role="RS"]').value = rowData.rs ?? "";
+                    row.querySelector('select[data-role="Vertretung"]').value = rowData.vert ?? "";
+                });
+                updateCounters();
+            };
+
+            const btnReset = document.createElement("button");
+            btnReset.className = "btn-reset";
+            btnReset.textContent = "Zurücksetzen";
+            btnReset.onclick = () => {
+                [...tbody.querySelectorAll('select')].forEach(s => s.value = "");
+                localStorage.removeItem(`dienstplan:${dateStr}`);
+                updateCounters();
+            };
+
+            // Auto-Save bei Änderung
+            tbody.querySelectorAll('select').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    const data = SHIFTS.map((shift, idx) => {
+                        const row = tbody.rows[idx];
+                        return {
+                            shift,
+                            rs: row.querySelector('select[data-role="RS"]').value,
+                            vert: row.querySelector('select[data-role="Vertretung"]').value
+                        };
+                    });
+                    localStorage.setItem(`dienstplan:${dateStr}`, JSON.stringify(data));
+                    updateCounters();
+                });
+            });
+
+            controls.appendChild(btnSave);
+            controls.appendChild(btnLoad);
+            controls.appendChild(btnReset);
+            card.appendChild(controls);
+
+            return card;
+        }
+
+        function createWeekendBlock(sat, sun, id) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "weekend";
+
+            const header = document.createElement("div");
+            header.className = "weekend-header";
+            header.innerHTML = `Wochenende: ${sat.toLocaleDateString("de-DE")} – ${sun.toLocaleDateString("de-DE")}`;
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Löschen";
+            deleteBtn.className = "btn-dark";
+            deleteBtn.onclick = () => {
+                if (!id) return;
+
+                db.ref("weekends/" + id).remove();
+
+                localStorage.removeItem(`dienstplan:${sat.toLocaleDateString("de-DE")}`);
+                localStorage.removeItem(`dienstplan:${sun.toLocaleDateString("de-DE")}`);
+            };
+
+
+            header.appendChild(deleteBtn);
+            wrapper.appendChild(header);
+
+            const dayWrap = document.createElement("div");
+            dayWrap.className = "day-wrap";
+            dayWrap.appendChild(buildDayTable(sat));
+            dayWrap.appendChild(buildDayTable(sun));
+            wrapper.appendChild(dayWrap);
+
+            document.getElementById("container").appendChild(wrapper);
+            updateDropdowns();
+
+            // Bereits gespeicherte Daten automatisch laden
+            setTimeout(() => { document.querySelectorAll(".btn-load").forEach(btn => btn.click()); }, 100);
+        }
+
+        function addWeekend() {
+            const satInput = document.getElementById("satDate").value;
+            const sunInput = document.getElementById("sunDate").value;
+
+            if (!satInput || !sunInput) {
+                alert("Bitte beide Daten eingeben!");
+                return;
+            }
+
+            const sat = new Date(satInput).toISOString();
+            const sun = new Date(sunInput).toISOString();
+
+            db.ref("weekends").push({ sat, sun });
+        }
+
+
+        /** Zählerlogik: alle Namen werden immer angezeigt (mit 0, wenn keine Zuweisungen) */
+        function updateCounters() {
+            const rsMap = {}, vertMap = {}, summaryRS = {}, summaryVert = {};
+
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith("dienstplan:")) {
+                    const data = JSON.parse(localStorage.getItem(key) || "[]");
+                    data.forEach(row => {
+                        if (row.rs) {
+                            rsMap[row.rs] = (rsMap[row.rs] || 0) + 1;
+                            if (!summaryRS[row.rs]) summaryRS[row.rs] = { früh: 0, spät: 0 };
+                            if (row.shift.startsWith("Früh")) summaryRS[row.rs].früh++;
+                            if (row.shift.startsWith("Spät")) summaryRS[row.rs].spät++;
+                        }
+                        if (row.vert) {
+                            vertMap[row.vert] = (vertMap[row.vert] || 0) + 1;
+                            if (!summaryVert[row.vert]) summaryVert[row.vert] = { früh: 0, spät: 0 };
+                            if (row.shift.startsWith("Früh")) summaryVert[row.vert].früh++;
+                            if (row.shift.startsWith("Spät")) summaryVert[row.vert].spät++;
+                        }
+                    });
+                }
+            });
+
+            // fehlende Namen mit 0 auffüllen
+            names.forEach(n => {
+                if (rsMap[n] === undefined) rsMap[n] = 0;
+                if (vertMap[n] === undefined) vertMap[n] = 0;
+                if (!summaryRS[n]) summaryRS[n] = { früh: 0, spät: 0 };
+                if (!summaryVert[n]) summaryVert[n] = { früh: 0, spät: 0 };
+            });
+
+            renderCounter("rsCounter", rsMap, names);
+            renderCounter("vertCounter", vertMap, names);
+            renderSummary("summaryRS", summaryRS, names);
+            renderSummary("summaryVert", summaryVert, names);
+        }
+
+        function renderCounter(tableId, map, orderedNames) {
+            const tbody = document.querySelector(`#${tableId} tbody`);
+            tbody.innerHTML = "";
+            const entries = orderedNames.map(n => [n, map[n] || 0])
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "de"));
+            entries.forEach(([name, count]) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${name}</td><td>${count}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderSummary(tableId, map, orderedNames) {
+            const tbody = document.querySelector(`#${tableId} tbody`);
+            tbody.innerHTML = "";
+            const rows = orderedNames.map(n => {
+                const obj = map[n] || { früh: 0, spät: 0 };
+                const sum = (obj.früh || 0) + (obj.spät || 0);
+                return { name: n, früh: obj.früh || 0, spät: obj.spät || 0, sum };
+            }).sort((a, b) => b.sum - a.sum || a.name.localeCompare(b.name, "de"));
+
+            rows.forEach(({ name, früh, spät, sum }) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${name}</td><td>${früh}</td><td>${spät}</td><td>${sum}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+        // Firebase Live-Laden
+        db.ref("names").on("value", snap => {
+            const val = snap.val();
+            if (val) {
+                names = val;
+                localStorage.setItem("names", JSON.stringify(names));
+                renderNameList();
+                updateDropdowns();
+                updateCounters();
+            }
+        });
+
+        db.ref("weekends").on("value", snap => {
+            const val = snap.val();
+
+            // UI immer leeren – egal ob val null oder object
+            document.getElementById("container").innerHTML = "";
+
+            if (!val) {
+                // Keine Weekends mehr -> UI leer lassen
+                weekends = [];
+                localStorage.setItem("weekends", "[]");
+                updateCounters();
+                return;
+            }
+
+            // Weekends korrekt laden
+            weekends = Object.entries(val).map(([id, w]) => ({
+                id,
+                sat: w.sat,
+                sun: w.sun
+            }));
+
+            localStorage.setItem("weekends", JSON.stringify(weekends));
+
+            // UI neu rendern
+            weekends.forEach(w => {
+                createWeekendBlock(new Date(w.sat), new Date(w.sun), w.id);
+            });
+
+            updateCounters();
+        });
+
+
+        db.ref("dienstplan").on("value", snap => {
+            const all = snap.val() || {};
+            Object.keys(all).forEach(key => {
+                localStorage.setItem("dienstplan:" + key, JSON.stringify(all[key]));
+            });
+            updateCounters();
+        });
+
+        // Initialisierung
+        renderNameList();
+        updateDropdowns();
+        updateCounters();
+    </script>
 </body>
 </html>
